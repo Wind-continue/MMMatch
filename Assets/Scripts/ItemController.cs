@@ -9,8 +9,8 @@ public class ItemController : MonoBehaviour
 {
     public int col;
     public int row;
-    public float itemWidth = 100f;
-    public float itemHeight = 100f;
+    public float itemWidth = 160f;
+    public float itemHeight = 160f;
     private SingleItem[,] ItemGrid;
     private UnityPool pool;
     private RectTransform rectTrans;
@@ -23,6 +23,9 @@ public class ItemController : MonoBehaviour
     private Vector2 dragStartPos;
     private bool isDragging = false;
     private const float swipeThreshold = 50f;
+    
+    // 游戏控制器引用
+    [SerializeField] private GamingController gamingController;
 
     void Start()
     {
@@ -42,6 +45,12 @@ public class ItemController : MonoBehaviour
         }
         
         InitializeGridWithoutMatches();
+        
+        // 如果没有手动指定 gamingController，尝试自动查找
+        if (gamingController == null)
+        {
+            gamingController = FindObjectOfType<GamingController>();
+        }
     }
 
     void InitializeGridWithoutMatches()
@@ -103,13 +112,13 @@ public class ItemController : MonoBehaviour
             itemRect.localScale = Vector3.one;
             itemRect.anchorMin = new Vector2(0, 1);
             itemRect.anchorMax = new Vector2(0, 1);
-            itemRect.pivot = new Vector2(0, 1);
+            itemRect.pivot = new Vector2(0.5f, 0.5f);
             itemRect.sizeDelta = new Vector2(itemWidth, itemHeight);
             
             if (setPosition)
             {
-                float x = j * itemWidth;
-                float y = -i * itemHeight;
+                float x = j * itemWidth + itemWidth / 2;
+                float y = -i * itemHeight - itemHeight / 2;
                 itemRect.anchoredPosition = new Vector2(x, y);
             }
         }
@@ -159,8 +168,11 @@ public class ItemController : MonoBehaviour
     private IEnumerator SwapItems(SingleItem item1, SingleItem item2)
     {
         isSwapping = true;
-        selectedItem.Select(false);
-        selectedItem = null;
+        if (selectedItem != null)
+        {
+            selectedItem.Select(false);
+            selectedItem = null;
+        }
         
         int row1 = item1.Row;
         int col1 = item1.Col;
@@ -187,6 +199,14 @@ public class ItemController : MonoBehaviour
             
             yield return StartCoroutine(MoveItemsTogether(item1, item2, row1, col1, row2, col2));
         }
+        else
+        {
+            // 成功匹配，减少步数
+            if (gamingController != null)
+            {
+                gamingController.OnSuccessfulMatch();
+            }
+        }
         
         isSwapping = false;
     }
@@ -201,8 +221,8 @@ public class ItemController : MonoBehaviour
         Vector2 startPos1 = rect1.anchoredPosition;
         Vector2 startPos2 = rect2.anchoredPosition;
         
-        Vector2 targetPos1 = new Vector2(targetCol1 * itemWidth, -targetRow1 * itemHeight);
-        Vector2 targetPos2 = new Vector2(targetCol2 * itemWidth, -targetRow2 * itemHeight);
+        Vector2 targetPos1 = new Vector2(targetCol1 * itemWidth + itemWidth / 2, -targetRow1 * itemHeight - itemHeight / 2);
+        Vector2 targetPos2 = new Vector2(targetCol2 * itemWidth + itemWidth / 2, -targetRow2 * itemHeight - itemHeight / 2);
         
         float duration = 0.25f;
         float elapsed = 0f;
@@ -406,7 +426,7 @@ public class ItemController : MonoBehaviour
                     item.SetItemIndex(targetRow, j);
                     
                     itemsToMove.Add(item);
-                    targetPositions.Add(new Vector2(j * itemWidth, -targetRow * itemHeight));
+                    targetPositions.Add(new Vector2(j * itemWidth + itemWidth / 2, -targetRow * itemHeight - itemHeight / 2));
                 }
             }
         }
@@ -446,9 +466,9 @@ public class ItemController : MonoBehaviour
                         {
                             newItem.gameObject.SetActive(false);
                             float startY = itemHeight;
-                            rect.anchoredPosition = new Vector2(j * itemWidth, startY);
+                            rect.anchoredPosition = new Vector2(j * itemWidth + itemWidth / 2, startY);
                             
-                            Vector2 targetPos = new Vector2(j * itemWidth, -i * itemHeight);
+                            Vector2 targetPos = new Vector2(j * itemWidth + itemWidth / 2, -i * itemHeight - itemHeight / 2);
                             
                             itemsToDrop.Add(newItem);
                             rectsToMove.Add(rect);
@@ -626,4 +646,5 @@ public class ItemController : MonoBehaviour
         // 如果没有成功交换，保持选中状态不变
         dragStartItem = null;
     }
+    
 }
