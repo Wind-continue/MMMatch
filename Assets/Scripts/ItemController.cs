@@ -1,6 +1,9 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
+using UnityEngine.EventSystems;
+
 
 public class ItemController : MonoBehaviour
 {
@@ -14,6 +17,12 @@ public class ItemController : MonoBehaviour
     private SingleItem selectedItem;
     private bool isSwapping = false;
     private bool isProcessing = false;
+
+    // 滑动相关
+    private SingleItem dragStartItem;
+    private Vector2 dragStartPos;
+    private bool isDragging = false;
+    private const float swipeThreshold = 50f;
 
     void Start()
     {
@@ -528,5 +537,93 @@ public class ItemController : MonoBehaviour
         {
             return n1 * (t -= 2.625f / d1) * t + 0.984375f;
         }
+    }
+
+    // 滑动开始
+    public void OnDragStarted(SingleItem item, PointerEventData eventData)
+    {
+        if (isSwapping || isProcessing || item == null) return;
+        
+        dragStartItem = item;
+        dragStartPos = eventData.position;
+        isDragging = true;
+        
+        // 选中起始物品
+        if (selectedItem != null && selectedItem != item)
+        {
+            selectedItem.Select(false);
+        }
+        selectedItem = item;
+        selectedItem.Select(true);
+    }
+    
+    // 滑动中
+    public void OnDragging(PointerEventData eventData)
+    {
+        if (!isDragging || isSwapping || isProcessing) return;
+    }
+    
+    // 滑动结束
+    public void OnDragEnded(PointerEventData eventData)
+    {
+        if (!isDragging || isSwapping || isProcessing || dragStartItem == null) return;
+        
+        isDragging = false;
+        
+        Vector2 dragEndPos = eventData.position;
+        Vector2 dragDelta = dragEndPos - dragStartPos;
+        
+        // 检查滑动距离是否超过阈值
+        if (dragDelta.magnitude >= swipeThreshold)
+        {
+            // 判断滑动方向
+            int targetRow = dragStartItem.Row;
+            int targetCol = dragStartItem.Col;
+            
+            if (Mathf.Abs(dragDelta.x) > Mathf.Abs(dragDelta.y))
+            {
+                // 水平滑动
+                if (dragDelta.x > 0)
+                {
+                    targetCol = dragStartItem.Col + 1; // 向右
+                }
+                else
+                {
+                    targetCol = dragStartItem.Col - 1; // 向左
+                }
+            }
+            else
+            {
+                // 垂直滑动
+                if (dragDelta.y > 0)
+                {
+                    targetRow = dragStartItem.Row - 1; // 向上
+                }
+                else
+                {
+                    targetRow = dragStartItem.Row + 1; // 向下
+                }
+            }
+            
+            // 检查目标位置是否有效
+            if (targetRow >= 0 && targetRow < row && targetCol >= 0 && targetCol < col)
+            {
+                SingleItem targetItem = ItemGrid[targetRow, targetCol];
+                if (targetItem != null)
+                {
+                    StartCoroutine(SwapItems(dragStartItem, targetItem));
+                    if (selectedItem != null)
+                    {
+                        selectedItem.Select(false);
+                        selectedItem = null;
+                    }
+                    dragStartItem = null;
+                    return;
+                }
+            }
+        }
+        
+        // 如果没有成功交换，保持选中状态不变
+        dragStartItem = null;
     }
 }

@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 
-public class SingleItem : MonoBehaviour, IPointerClickHandler
+public class SingleItem : MonoBehaviour, IPointerClickHandler, IDragHandler, IBeginDragHandler, IEndDragHandler
 {
     private int _row;
     private int _col;
@@ -37,6 +37,29 @@ public class SingleItem : MonoBehaviour, IPointerClickHandler
         if (borderTrans != null)
         {
             _borderImage = borderTrans.GetComponent<Image>();
+        }
+    }
+
+    public void OnBeginDrag(PointerEventData eventData)
+    {
+        if (_controller != null)
+        {
+            _controller.OnDragStarted(this, eventData);
+        }
+    }
+    public void OnDrag(PointerEventData eventData)
+    {
+        if (_controller != null)
+        {
+            _controller.OnDragging(eventData);
+        }
+    }
+
+    public void OnEndDrag(PointerEventData eventData)
+    {
+        if (_controller != null)
+        {
+            _controller.OnDragEnded(eventData);
         }
     }
 
