@@ -13,6 +13,8 @@ public class SingleItem : MonoBehaviour, IPointerClickHandler, IDragHandler, IBe
     private Image _itemImage;
     private ItemController _controller;
     private Image _borderImage;
+    private GameObject _clickEffect;
+    private Image _clickEffectImage;
 
     public int Row { get { return _row; } }
     public int Col { get { return _col; } }
@@ -28,15 +30,18 @@ public class SingleItem : MonoBehaviour, IPointerClickHandler, IDragHandler, IBe
                 _itemImage = fruitTrans.gameObject.AddComponent<Image>();
             }
         }
-        else
-        {
-            Debug.LogError("Child object 'Fruit' not found in " + gameObject.name);
-        }
         
         Transform borderTrans = transform.Find("Border");
         if (borderTrans != null)
         {
             _borderImage = borderTrans.GetComponent<Image>();
+        }
+        
+        Transform clickEffectTrans = transform.Find("ClickEffect");
+        if (clickEffectTrans != null)
+        {
+            _clickEffect = clickEffectTrans.gameObject;
+            _clickEffect.SetActive(false);
         }
     }
 
@@ -93,6 +98,11 @@ public class SingleItem : MonoBehaviour, IPointerClickHandler, IDragHandler, IBe
 
     public void Select(bool isSelected)
     {
+        if (_clickEffect != null)
+        {
+            _clickEffect.SetActive(isSelected);
+        }
+        
         if (_borderImage != null)
         {
             _borderImage.enabled = isSelected;
