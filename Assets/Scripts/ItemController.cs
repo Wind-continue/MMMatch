@@ -392,10 +392,31 @@ public class ItemController : MonoBehaviour
 
     IEnumerator DestroyMatches(List<SingleItem> matches)
     {
+        Dictionary<int, int> destroyedTypes = new Dictionary<int, int>();
+        
         foreach (SingleItem item in matches)
         {
             ItemGrid[item.Row, item.Col] = null;
             pool.ReleasePooledItem(item);
+            
+            // 统计消除的物品类型
+            if (destroyedTypes.ContainsKey(item.type))
+            {
+                destroyedTypes[item.type]++;
+            }
+            else
+            {
+                destroyedTypes[item.type] = 1;
+            }
+        }
+        
+        // 通知目标管理器
+        if (TargetManager.Instance != null)
+        {
+            foreach (var pair in destroyedTypes)
+            {
+                TargetManager.Instance.OnItemMatched(pair.Key, pair.Value);
+            }
         }
         
         yield return null;

@@ -102,4 +102,11 @@ public class GamingController : MonoBehaviour
     {
         return currentSteps;
     }
+    
+    public void OnAllTargetsCompleted()
+    {
+        Debug.Log("Level Complete!");
+        // 关卡完成逻辑（暂未实现）
+        // WinPanel?.SetActive(true);
+    }
 }
