@@ -36,22 +36,15 @@ public class GamingController : MonoBehaviour
         currentSteps = totalSteps;
         UpdateStepText();
         
-        // 显示 Title_Style1，隐藏 Title_Style2
+        // 全程显示 Title_Style2
         if (Title_Style1 != null)
-            Title_Style1.SetActive(true);
+            Title_Style1.SetActive(false);
         if (Title_Style2 != null)
-            Title_Style2.SetActive(false);
+            Title_Style2.SetActive(true);
     }
     
     public void OnSuccessfulMatch()
     {
-        // 首次成功匹配时切换到 Style2
-        if (!hasStarted)
-        {
-            SwitchToStyle2();
-            hasStarted = true;
-        }
-        
         // 减少步数
         currentSteps--;
         UpdateStepText();
@@ -71,14 +64,6 @@ public class GamingController : MonoBehaviour
         }
     }
     
-    private void SwitchToStyle2()
-    {
-        if (Title_Style1 != null)
-            Title_Style1.SetActive(false);
-        if (Title_Style2 != null)
-            Title_Style2.SetActive(true);
-    }
-    
     private void TriggerGameOver()
     {
         Debug.Log("Game Over! Steps: " + currentSteps);
@@ -89,13 +74,13 @@ public class GamingController : MonoBehaviour
     public void ResetGame()
     {
         currentSteps = totalSteps;
-        hasStarted = false;
         UpdateStepText();
         
+        // 保持显示 Title_Style2
         if (Title_Style1 != null)
-            Title_Style1.SetActive(true);
+            Title_Style1.SetActive(false);
         if (Title_Style2 != null)
-            Title_Style2.SetActive(false);
+            Title_Style2.SetActive(true);
     }
     
     public int GetCurrentSteps()
