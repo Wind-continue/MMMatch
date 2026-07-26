@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using MMMatch.UI;
 
 public class GamingController : MonoBehaviour
 {
@@ -11,10 +12,9 @@ public class GamingController : MonoBehaviour
     [SerializeField] private Text Step_Text;
     
     [Header("Game Settings")]
-    public int totalSteps = 30;
+    public int totalSteps = 10;
     
     private int currentSteps;
-    private bool hasStarted = false;
     
     public static GamingController Instance { get; private set; }
     
@@ -32,6 +32,12 @@ public class GamingController : MonoBehaviour
     
     void Start()
     {
+        // 检查必要引用
+        if (Step_Text == null)
+        {
+            Debug.LogError("Step_Text is not assigned! Please set it in Inspector.");
+        }
+        
         // 初始化游戏状态
         currentSteps = totalSteps;
         UpdateStepText();
@@ -67,8 +73,11 @@ public class GamingController : MonoBehaviour
     private void TriggerGameOver()
     {
         Debug.Log("Game Over! Steps: " + currentSteps);
-        // 游戏结束弹窗接口（暂未实现）
-        // GameOverPanel?.SetActive(true);
+        // 显示游戏结束界面
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.ShowPanel<GameOverUI>();
+        }
     }
     
     public void ResetGame()
@@ -81,6 +90,12 @@ public class GamingController : MonoBehaviour
             Title_Style1.SetActive(false);
         if (Title_Style2 != null)
             Title_Style2.SetActive(true);
+        
+        // 隐藏游戏结束界面
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.HidePanel<GameOverUI>();
+        }
     }
     
     public int GetCurrentSteps()

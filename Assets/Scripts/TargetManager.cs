@@ -38,9 +38,12 @@ public class TargetManager : MonoBehaviour
         }
         targetItems.Clear();
         
-        // 创建默认目标（直接在代码中定义）
+        // 创建默认目标
         levelTargets.Clear();
         CreateDefaultTargets();
+        
+        // 自动查找 TargetArea
+        FindTargetArea();
         
         // 检查引用
         if (targetArea == null)
@@ -48,6 +51,8 @@ public class TargetManager : MonoBehaviour
             Debug.LogError("TargetArea is null! Please assign in Inspector.");
             return;
         }
+        
+        Debug.Log("TargetArea found: " + targetArea.name);
         
         if (targetItemPrefab == null)
         {
@@ -92,6 +97,38 @@ public class TargetManager : MonoBehaviour
             
             Debug.Log("Created target: type=" + data.type + ", amount=" + data.amount);
         }
+    }
+    
+    private void FindTargetArea()
+    {
+        if (targetArea != null)
+            return;
+        
+        Debug.LogWarning("TargetArea not assigned in Inspector. Trying to find automatically...");
+        
+        // 尝试多种路径查找
+        string[] possiblePaths = new string[]
+        {
+            "TargetArea",
+            "/UIRoot/GamingUI/TargetArea",
+            "/UIRoot/Title_Style2/TargetArea",
+            "/Canvas/GamingUI/TargetArea",
+            "GamingUI/TargetArea",
+            "Title_Style2/TargetArea"
+        };
+        
+        foreach (string path in possiblePaths)
+        {
+            Transform area = GameObject.Find(path)?.transform;
+            if (area != null)
+            {
+                targetArea = area;
+                Debug.Log("Found TargetArea at: " + path);
+                return;
+            }
+        }
+        
+        Debug.LogError("TargetArea not found! Please create a GameObject named 'TargetArea' under GamingUI or assign it in Inspector.");
     }
     
     private void CreateDefaultTargets()

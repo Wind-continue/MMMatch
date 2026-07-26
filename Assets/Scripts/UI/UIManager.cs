@@ -50,13 +50,38 @@ namespace MMMatch.UI
             if (!createIfNotExist)
                 return null;
             
-            // 尝试查找场景中已存在的面板
-            T existingPanel = FindObjectOfType<T>();
-            if (existingPanel != null)
+            // 尝试按名称查找场景中已存在的面板对象
+            GameObject existingObj = GameObject.Find(panelName);
+            if (existingObj == null)
             {
+                // 尝试在 UIRoot 下查找
+                existingObj = uiRoot?.Find(panelName)?.gameObject;
+            }
+            
+            if (existingObj != null)
+            {
+                // 获取或添加组件
+                T existingPanel = existingObj.GetComponent<T>();
+                if (existingPanel == null)
+                {
+                    existingPanel = existingObj.AddComponent<T>();
+                    Debug.LogWarning("Added " + panelName + " component to existing GameObject.");
+                }
+                
                 panelCache.Add(panelName, existingPanel);
+                Debug.Log("Found existing panel: " + panelName);
                 return existingPanel;
             }
+            
+            // 尝试按类型查找
+            T typePanel = FindObjectOfType<T>();
+            if (typePanel != null)
+            {
+                panelCache.Add(panelName, typePanel);
+                return typePanel;
+            }
+            
+            Debug.LogWarning("Creating new panel: " + panelName);
             
             // 创建新面板
             GameObject panelObj = new GameObject(panelName);
