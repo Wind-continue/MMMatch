@@ -6,168 +6,140 @@ namespace MMMatch.UI
     public class UIManager : MonoBehaviour
     {
         public static UIManager Instance { get; private set; }
-        
-        [Header("Settings")]
+
         [SerializeField] private Transform uiRoot;
-        
-        private Dictionary<string, UIPanelBase> panelCache = new Dictionary<string, UIPanelBase>();
-        
+        [SerializeField] private List<GameObject> panelPrefabs = new List<GameObject>();
+
+        private Dictionary<string, GameObject> templates = new Dictionary<string, GameObject>();
+        private List<UIPanelBase> panelStack = new List<UIPanelBase>();
+
         void Awake()
         {
-            if (Instance == null)
+            if (Instance != null && Instance != this)
             {
-                Instance = this;
-                DontDestroyOnLoad(gameObject);
+                Destroy(gameObject);
+                return;
+            }
+            Instance = this;
+
+            if (uiRoot == null) uiRoot = transform;
+
+            CacheTemplates();
+        }
+
+        void Start()
+        {
+            Open<EnterGameUI>();
+        }
+
+        void OnDestroy()
+        {
+            if (Instance == this) Instance = null;
+        }
+
+        private void CacheTemplates()
+        {
+            templates.Clear();
+
+            foreach (GameObject prefab in panelPrefabs)
+            {
+                if (prefab == null) continue;
+                UIPanelBase panel = prefab.GetComponent<UIPanelBase>();
+                if (panel != null)
+                {
+                    string key = panel.GetType().Name;
+                    if (!templates.ContainsKey(key))
+                        templates[key] = prefab;
+                }
+            }
+
+            UIPanelBase[] scenePanels = uiRoot.GetComponentsInChildren<UIPanelBase>(true);
+            foreach (var panel in scenePanels)
+            {
+                string key = panel.GetType().Name;
+                if (!templates.ContainsKey(key))
+                    templates[key] = panel.gameObject;
+                panel.gameObject.SetActive(false);
+            }
+        }
+
+        public T Open<T>() where T : UIPanelBase
+        {
+            string key = typeof(T).Name;
+            T panel;
+
+            if (templates.ContainsKey(key) && templates[key] != null)
+            {
+                GameObject obj = Instantiate(templates[key], uiRoot);
+                obj.name = key;
+                panel = obj.GetComponent<T>();
             }
             else
             {
-                Destroy(gameObject);
+                GameObject obj = new GameObject(key);
+                obj.transform.SetParent(uiRoot, false);
+                RectTransform rect = obj.AddComponent<RectTransform>();
+                rect.anchorMin = Vector2.zero;
+                rect.anchorMax = Vector2.one;
+                rect.offsetMin = Vector2.zero;
+                rect.offsetMax = Vector2.zero;
+                rect.localScale = Vector3.one;
+                panel = obj.AddComponent<T>();
             }
-            
-            // 如果没有设置 UIRoot，自动查找
-            if (uiRoot == null)
-            {
-                uiRoot = GameObject.Find("UIRoot")?.transform;
-                if (uiRoot == null)
-                {
-                    GameObject uiRootObj = new GameObject("UIRoot");
-                    uiRoot = uiRootObj.transform;
-                    Debug.LogWarning("UIRoot not found, created automatically.");
-                }
-            }
-        }
-        
-        public T GetPanel<T>(bool createIfNotExist = true) where T : UIPanelBase
-        {
-            string panelName = typeof(T).Name;
-            
-            // 如果缓存中已有，直接返回
-            if (panelCache.ContainsKey(panelName))
-            {
-                return panelCache[panelName] as T;
-            }
-            
-            if (!createIfNotExist)
-                return null;
-            
-            // 尝试按名称查找场景中已存在的面板对象
-            GameObject existingObj = GameObject.Find(panelName);
-            if (existingObj == null)
-            {
-                // 尝试在 UIRoot 下查找
-                existingObj = uiRoot?.Find(panelName)?.gameObject;
-            }
-            
-            if (existingObj != null)
-            {
-                // 获取或添加组件
-                T existingPanel = existingObj.GetComponent<T>();
-                if (existingPanel == null)
-                {
-                    existingPanel = existingObj.AddComponent<T>();
-                    Debug.LogWarning("Added " + panelName + " component to existing GameObject.");
-                }
-                
-                panelCache.Add(panelName, existingPanel);
-                Debug.Log("Found existing panel: " + panelName);
-                return existingPanel;
-            }
-            
-            // 尝试按类型查找
-            T typePanel = FindObjectOfType<T>();
-            if (typePanel != null)
-            {
-                panelCache.Add(panelName, typePanel);
-                return typePanel;
-            }
-            
-            Debug.LogWarning("Creating new panel: " + panelName);
-            
-            // 创建新面板
-            GameObject panelObj = new GameObject(panelName);
-            panelObj.transform.SetParent(uiRoot);
-            
-            // 设置 RectTransform
-            RectTransform rect = panelObj.AddComponent<RectTransform>();
-            rect.anchorMin = Vector2.zero;
-            rect.anchorMax = Vector2.one;
-            rect.offsetMin = Vector2.zero;
-            rect.offsetMax = Vector2.zero;
-            rect.localScale = Vector3.one;
-            
-            // 添加面板组件
-            T panel = panelObj.AddComponent<T>();
-            panel.Hide();
-            
-            panelCache.Add(panelName, panel);
+
+            panel.transform.SetAsLastSibling();
+            panel.gameObject.SetActive(true);
+            panel.OnOpen();
+            panelStack.Add(panel);
+
             return panel;
         }
-        
-        public void ShowPanel<T>() where T : UIPanelBase
+
+        public void ClosePanel(UIPanelBase panel)
         {
-            T panel = GetPanel<T>();
-            if (panel != null)
-            {
-                panel.Show();
-            }
+            if (panel == null) return;
+
+            int index = panelStack.IndexOf(panel);
+            if (index < 0) return;
+
+            panel.OnClose();
+            panelStack.RemoveAt(index);
+            Destroy(panel.gameObject);
         }
-        
-        public void HidePanel<T>() where T : UIPanelBase
+
+        public void ClosePanel<T>() where T : UIPanelBase
         {
-            string panelName = typeof(T).Name;
-            if (panelCache.ContainsKey(panelName))
+            for (int i = panelStack.Count - 1; i >= 0; i--)
             {
-                panelCache[panelName].Hide();
-            }
-        }
-        
-        public bool IsPanelVisible<T>() where T : UIPanelBase
-        {
-            string panelName = typeof(T).Name;
-            if (panelCache.ContainsKey(panelName))
-            {
-                return panelCache[panelName].gameObject.activeSelf;
-            }
-            return false;
-        }
-        
-        public void TogglePanel<T>() where T : UIPanelBase
-        {
-            T panel = GetPanel<T>();
-            if (panel != null)
-            {
-                if (panel.gameObject.activeSelf)
+                if (panelStack[i] is T)
                 {
-                    panel.Hide();
-                }
-                else
-                {
-                    panel.Show();
+                    ClosePanel(panelStack[i]);
+                    return;
                 }
             }
         }
-        
-        public void DestroyPanel<T>() where T : UIPanelBase
+
+        public void CloseAllPanels()
         {
-            string panelName = typeof(T).Name;
-            if (panelCache.ContainsKey(panelName))
+            for (int i = panelStack.Count - 1; i >= 0; i--)
             {
-                Destroy(panelCache[panelName].gameObject);
-                panelCache.Remove(panelName);
+                if (panelStack[i] != null)
+                {
+                    panelStack[i].OnClose();
+                    Destroy(panelStack[i].gameObject);
+                }
             }
+            panelStack.Clear();
         }
-        
-        public void HideAllPanels()
+
+        public T FindPanel<T>() where T : UIPanelBase
         {
-            foreach (var panel in panelCache.Values)
+            for (int i = panelStack.Count - 1; i >= 0; i--)
             {
-                panel.Hide();
+                if (panelStack[i] is T t)
+                    return t;
             }
-        }
-        
-        public Transform GetUIRoot()
-        {
-            return uiRoot;
+            return null;
         }
     }
 }

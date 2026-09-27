@@ -1,5 +1,4 @@
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using MMMatch.UI;
@@ -10,103 +9,177 @@ public class GamingController : MonoBehaviour
     [SerializeField] private GameObject Title_Style1;
     [SerializeField] private GameObject Title_Style2;
     [SerializeField] private Text Step_Text;
-    
+
     [Header("Game Settings")]
     public int totalSteps = 10;
-    
+
     private int currentSteps;
-    
+    private bool isGameOver = false;
+    private bool isLevelComplete = false;
+    private bool isGameStarted = false;
+    private bool pendingWin = false;
+    private int pendingWinLevel;
+    private int pendingWinScore;
+    private int pendingWinCoins;
+
     public static GamingController Instance { get; private set; }
-    
+
+    public bool IsGameActive { get { return isGameStarted && !isGameOver && !isLevelComplete; } }
+
     void Awake()
     {
-        if (Instance == null)
-        {
-            Instance = this;
-        }
-        else
+        if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+    }
+
+    void OnDestroy()
+    {
+        if (Instance == this)
+            Instance = null;
+    }
+
+    void Update()
+    {
+        if (!isGameStarted) return;
+
+        if (pendingWin)
+        {
+            ItemController ic = FindObjectOfType<ItemController>();
+            if (ic == null || !ic.IsProcessing)
+            {
+                pendingWin = false;
+                ShowWinUI(pendingWinLevel, pendingWinScore, pendingWinCoins);
+            }
         }
     }
-    
-    void Start()
+
+    public void StartGame()
     {
-        // 检查必要引用
+        ResolveStepText();
+
+        int currentLevel = SaveManager.Instance.PlayerData.currentLevel;
+        LevelConfig config = LevelConfig.Load(currentLevel);
+        totalSteps = config.step;
+        currentSteps = totalSteps;
+
+        if (Title_Style1 != null)
+            Title_Style1.SetActive(false);
+        if (Title_Style2 != null)
+            Title_Style2.SetActive(true);
+
+        ResolveStepText();
+
+        if (Step_Text != null)
+            Step_Text.text = currentSteps.ToString();
+
+        isGameStarted = true;
+    }
+
+    private void ResolveStepText()
+    {
+        if (Step_Text != null) return;
+
+        if (Title_Style2 == null)
+        {
+            Transform t = transform.Find("Title_Style2");
+            if (t == null)
+            {
+                GameObject obj = GameObject.Find("Title_Style2");
+                if (obj != null) t = obj.transform;
+            }
+            if (t != null) Title_Style2 = t.gameObject;
+        }
+
+        if (Title_Style2 != null)
+        {
+            Transform st = Title_Style2.transform.Find("StepArea/Step_Text");
+            if (st != null) Step_Text = st.GetComponent<Text>();
+        }
+
         if (Step_Text == null)
         {
-            Debug.LogError("Step_Text is not assigned! Please set it in Inspector.");
+            GameObject obj = GameObject.Find("Step_Text");
+            if (obj != null) Step_Text = obj.GetComponent<Text>();
         }
-        
-        // 初始化游戏状态
-        currentSteps = totalSteps;
-        UpdateStepText();
-        
-        // 全程显示 Title_Style2
-        if (Title_Style1 != null)
-            Title_Style1.SetActive(false);
-        if (Title_Style2 != null)
-            Title_Style2.SetActive(true);
     }
-    
+
     public void OnSuccessfulMatch()
     {
-        // 减少步数
+        if (!IsGameActive) return;
+
         currentSteps--;
-        UpdateStepText();
-        
-        // 检查是否步数用尽
-        if (currentSteps <= 0)
-        {
-            TriggerGameOver();
-        }
-    }
-    
-    private void UpdateStepText()
-    {
+
         if (Step_Text != null)
-        {
             Step_Text.text = currentSteps.ToString();
-        }
+
+        if (currentSteps <= 0)
+            TriggerGameOver();
     }
-    
+
     private void TriggerGameOver()
     {
-        Debug.Log("Game Over! Steps: " + currentSteps);
-        // 显示游戏结束界面
-        if (UIManager.Instance != null)
-        {
-            UIManager.Instance.ShowPanel<GameOverUI>();
-        }
+        if (isGameOver || isLevelComplete) return;
+        isGameOver = true;
+
+        int level = SaveManager.Instance.PlayerData.currentLevel;
+        int score = SaveManager.Instance.GetLevelScore(level);
+        SaveManager.Instance.SaveLevelProgress(level, score, false);
+
+        StartCoroutine(ShowGameOverUICoroutine(level));
     }
-    
-    public void ResetGame()
+
+    public void OnAllTargetsCompleted()
     {
-        currentSteps = totalSteps;
-        UpdateStepText();
-        
-        // 保持显示 Title_Style2
-        if (Title_Style1 != null)
-            Title_Style1.SetActive(false);
-        if (Title_Style2 != null)
-            Title_Style2.SetActive(true);
-        
-        // 隐藏游戏结束界面
+        if (isGameOver || isLevelComplete) return;
+        isLevelComplete = true;
+
+        int level = SaveManager.Instance.PlayerData.currentLevel;
+        int remainingSteps = currentSteps;
+        int score = remainingSteps * 10;
+        int coinsEarned = score;
+
+        SaveManager.Instance.SaveLevelProgress(level, score, true);
+        SaveManager.Instance.UnlockNextLevel();
+        SaveManager.Instance.AddCoins(coinsEarned);
+
+        pendingWin = true;
+        pendingWinLevel = level;
+        pendingWinScore = score;
+        pendingWinCoins = coinsEarned;
+    }
+
+    private void ShowWinUI(int level, int score, int coins)
+    {
         if (UIManager.Instance != null)
         {
-            UIManager.Instance.HidePanel<GameOverUI>();
+            LevelWinUI winUI = UIManager.Instance.Open<LevelWinUI>();
+            if (winUI != null)
+                winUI.Setup(level, score, coins);
         }
     }
-    
+
+    private IEnumerator ShowGameOverUICoroutine(int level)
+    {
+        yield return new WaitForSecondsRealtime(0.5f);
+
+        ItemController ic = FindObjectOfType<ItemController>();
+        while (ic != null && ic.IsProcessing)
+            yield return null;
+
+        if (UIManager.Instance != null)
+        {
+            GameOverUI gameOverUI = UIManager.Instance.Open<GameOverUI>();
+            if (gameOverUI != null)
+                gameOverUI.Setup(level);
+        }
+    }
+
     public int GetCurrentSteps()
     {
         return currentSteps;
-    }
-    
-    public void OnAllTargetsCompleted()
-    {
-        Debug.Log("Level Complete!");
-        // 关卡完成逻辑（暂未实现）
-        // WinPanel?.SetActive(true);
     }
 }

@@ -18,6 +18,8 @@ public class ItemController : MonoBehaviour
     private bool isSwapping = false;
     private bool isProcessing = false;
 
+    public bool IsProcessing { get { return isProcessing || isSwapping; } }
+
     // 滑动相关
     private SingleItem dragStartItem;
     private Vector2 dragStartPos;
@@ -132,6 +134,7 @@ public class ItemController : MonoBehaviour
     public void OnItemClicked(SingleItem item)
     {
         if (isSwapping || isProcessing) return;
+        if (GamingController.Instance != null && !GamingController.Instance.IsGameActive) return;
         
         if (selectedItem == null)
         {
@@ -187,7 +190,7 @@ public class ItemController : MonoBehaviour
         
         yield return StartCoroutine(MoveItemsTogether(item1, item2, row2, col2, row1, col1));
         
-        yield return new WaitForSeconds(0.1f);
+        yield return new WaitForSecondsRealtime(0.1f);
         
         if (!CheckMatches())
         {
@@ -229,7 +232,7 @@ public class ItemController : MonoBehaviour
         
         while (elapsed < duration)
         {
-            elapsed += Time.deltaTime;
+            elapsed += Time.unscaledDeltaTime;
             float t = elapsed / duration;
             t = EaseOutCubic(t);
             
@@ -373,13 +376,13 @@ public class ItemController : MonoBehaviour
         
         yield return StartCoroutine(DestroyMatches(matches));
         
-        yield return new WaitForSeconds(0.1f);
+        yield return new WaitForSecondsRealtime(0.1f);
         
         yield return StartCoroutine(DropItems());
         
         yield return StartCoroutine(FillEmptySpaces());
         
-        yield return new WaitForSeconds(0.1f);
+        yield return new WaitForSecondsRealtime(0.1f);
         
         List<SingleItem> newMatches = FindAllMatches();
         if (newMatches.Count > 0)
@@ -462,7 +465,7 @@ public class ItemController : MonoBehaviour
                     StartCoroutine(MoveItemToPosition(rect, targetPositions[i]));
                 }
             }
-            yield return new WaitForSeconds(0.25f);
+            yield return new WaitForSecondsRealtime(0.25f);
         }
     }
 
@@ -508,7 +511,7 @@ public class ItemController : MonoBehaviour
         
         if (itemsToDrop.Count > 0)
         {
-            yield return new WaitForSeconds(0.3f + col * 0.03f);
+            yield return new WaitForSecondsRealtime(0.3f + col * 0.03f);
         }
     }
 
@@ -520,7 +523,7 @@ public class ItemController : MonoBehaviour
         
         while (elapsed < duration)
         {
-            elapsed += Time.deltaTime;
+            elapsed += Time.unscaledDeltaTime;
             float t = elapsed / duration;
             t = EaseOutCubic(t);
             
@@ -534,7 +537,7 @@ public class ItemController : MonoBehaviour
 
     IEnumerator MoveItemToPositionWithDelay(SingleItem item, RectTransform rect, Vector2 targetPos, float delay)
     {
-        yield return new WaitForSeconds(delay);
+        yield return new WaitForSecondsRealtime(delay);
         
         item.gameObject.SetActive(true);
         
@@ -545,7 +548,7 @@ public class ItemController : MonoBehaviour
         
         while (elapsed < duration)
         {
-            elapsed += Time.deltaTime;
+            elapsed += Time.unscaledDeltaTime;
             float t = elapsed / duration;
             t = EaseOutBounce(t);
             
@@ -584,6 +587,7 @@ public class ItemController : MonoBehaviour
     public void OnDragStarted(SingleItem item, PointerEventData eventData)
     {
         if (isSwapping || isProcessing || item == null) return;
+        if (GamingController.Instance != null && !GamingController.Instance.IsGameActive) return;
         
         dragStartItem = item;
         dragStartPos = eventData.position;

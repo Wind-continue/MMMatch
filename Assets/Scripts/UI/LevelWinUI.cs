@@ -4,13 +4,17 @@ using MMMatch.UI;
 
 namespace MMMatch.UI
 {
-    public class GameOverUI : UIPanelBase
+    public class LevelWinUI : UIPanelBase
     {
         [Header("UI References")]
         [SerializeField] private Text levelText;
-        [SerializeField] private Button againBtn;
+        [SerializeField] private Text scoreText;
+        [SerializeField] private Text coinsText;
+        [SerializeField] private Button nextLevelBtn;
         [SerializeField] private Button levelsBtn;
         [SerializeField] private Button homeBtn;
+
+        private int currentLevel;
 
         public override void OnOpen()
         {
@@ -31,10 +35,22 @@ namespace MMMatch.UI
                 if (lt != null) levelText = lt.GetComponent<Text>();
             }
 
-            if (againBtn == null)
+            if (scoreText == null)
             {
-                Transform ab = transform.Find("AgainBtn");
-                if (ab != null) againBtn = ab.GetComponent<Button>();
+                Transform st = transform.Find("ScoreText");
+                if (st != null) scoreText = st.GetComponent<Text>();
+            }
+
+            if (coinsText == null)
+            {
+                Transform ct = transform.Find("CoinsText");
+                if (ct != null) coinsText = ct.GetComponent<Text>();
+            }
+
+            if (nextLevelBtn == null)
+            {
+                Transform nb = transform.Find("NextLevelBtn");
+                if (nb != null) nextLevelBtn = nb.GetComponent<Button>();
             }
 
             if (levelsBtn == null)
@@ -49,10 +65,10 @@ namespace MMMatch.UI
                 if (hb != null) homeBtn = hb.GetComponent<Button>();
             }
 
-            if (againBtn != null)
+            if (nextLevelBtn != null)
             {
-                againBtn.onClick.RemoveAllListeners();
-                againBtn.onClick.AddListener(OnAgainClicked);
+                nextLevelBtn.onClick.RemoveAllListeners();
+                nextLevelBtn.onClick.AddListener(OnNextLevelClicked);
             }
 
             if (levelsBtn != null)
@@ -68,19 +84,31 @@ namespace MMMatch.UI
             }
         }
 
-        public void Setup(int level)
+        public void Setup(int level, int score, int coins)
         {
+            currentLevel = level;
+
             if (levelText != null)
                 levelText.text = "Level " + level;
+
+            if (scoreText != null)
+                scoreText.text = score.ToString();
+
+            if (coinsText != null)
+                coinsText.text = "+" + coins;
         }
 
-        private void OnAgainClicked()
+        private void OnNextLevelClicked()
         {
             Close();
 
             if (UIManager.Instance != null)
             {
                 UIManager.Instance.ClosePanel<GamingUI>();
+
+                int nextLevel = currentLevel + 1;
+                SaveManager.Instance.SetCurrentLevel(nextLevel);
+
                 UIManager.Instance.Open<GamingUI>();
             }
         }

@@ -14,13 +14,20 @@ public class TargetManager : MonoBehaviour
     
     void Awake()
     {
-        if (Instance == null)
-        {
-            Instance = this;
-        }
-        else
+        if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
+            return;
+        }
+
+        Instance = this;
+    }
+
+    void OnDestroy()
+    {
+        if (Instance == this)
+        {
+            Instance = null;
         }
     }
     
@@ -40,7 +47,7 @@ public class TargetManager : MonoBehaviour
         
         // 创建默认目标
         levelTargets.Clear();
-        CreateDefaultTargets();
+        LoadTargetsFromConfig();
         
         // 自动查找 TargetArea
         FindTargetArea();
@@ -131,9 +138,25 @@ public class TargetManager : MonoBehaviour
         Debug.LogError("TargetArea not found! Please create a GameObject named 'TargetArea' under GamingUI or assign it in Inspector.");
     }
     
+    private void LoadTargetsFromConfig()
+    {
+        int currentLevel = SaveManager.Instance.PlayerData.currentLevel;
+        LevelConfig config = LevelConfig.Load(currentLevel);
+        if (config.target != null && config.target.Count > 0)
+        {
+            foreach (LevelConfig.TargetConfig tc in config.target)
+            {
+                levelTargets.Add(new TargetData(tc.type, tc.amount));
+            }
+        }
+        else
+        {
+            CreateDefaultTargets();
+        }
+    }
+
     private void CreateDefaultTargets()
     {
-        // 创建默认目标数据（数量分别为5, 5, 10）
         levelTargets.Add(new TargetData(0, 5));  // type 0: 樱桃
         levelTargets.Add(new TargetData(1, 5));  // type 1: 橙子
         levelTargets.Add(new TargetData(2, 10)); // type 2: 方块

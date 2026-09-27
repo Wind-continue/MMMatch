@@ -2,33 +2,15 @@ using UnityEngine;
 
 namespace MMMatch.UI
 {
-    public class UIPanelBase : MonoBehaviour
+    public abstract class UIPanelBase : MonoBehaviour
     {
-        protected UIManager uiManager;
-        
-        protected virtual void Awake()
+        public virtual void OnOpen() { }
+        public virtual void OnClose() { }
+
+        public void Close()
         {
-            uiManager = UIManager.Instance;
-        }
-        
-        public virtual void Show()
-        {
-            gameObject.SetActive(true);
-        }
-        
-        public virtual void Hide()
-        {
-            gameObject.SetActive(false);
-        }
-        
-        public virtual void ShowWithAnimation()
-        {
-            Show();
-        }
-        
-        public virtual void HideWithAnimation()
-        {
-            Hide();
+            if (UIManager.Instance != null)
+                UIManager.Instance.ClosePanel(this);
         }
     }
 }
