@@ -1,8 +1,0 @@
-{
-  "step": 10,
-  "target": [
-    { "type": 0, "amount": 5 },
-    { "type": 1, "amount": 5 },
-    { "type": 2, "amount": 5 }
-  ]
-}

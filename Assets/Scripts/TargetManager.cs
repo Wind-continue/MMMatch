@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using MMMatch.UI;
 
 public class TargetManager : MonoBehaviour
 {
@@ -197,9 +198,9 @@ public class TargetManager : MonoBehaviour
     {
         Debug.Log("All targets completed!");
         // 可以触发胜利逻辑
-        if (GamingController.Instance != null)
+        if (GamingUI.Instance != null)
         {
-            GamingController.Instance.OnAllTargetsCompleted();
+            GamingUI.Instance.OnAllTargetsCompleted();
         }
     }
     

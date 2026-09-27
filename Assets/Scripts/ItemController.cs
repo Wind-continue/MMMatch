@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
+using MMMatch.UI;
 
 
 public class ItemController : MonoBehaviour
@@ -27,7 +28,7 @@ public class ItemController : MonoBehaviour
     private const float swipeThreshold = 50f;
     
     // 游戏控制器引用
-    [SerializeField] private GamingController gamingController;
+    [SerializeField] private GamingUI gamingController;
 
     void Start()
     {
@@ -51,7 +52,7 @@ public class ItemController : MonoBehaviour
         // 如果没有手动指定 gamingController，尝试自动查找
         if (gamingController == null)
         {
-            gamingController = FindObjectOfType<GamingController>();
+            gamingController = FindObjectOfType<GamingUI>();
         }
     }
 
@@ -134,7 +135,7 @@ public class ItemController : MonoBehaviour
     public void OnItemClicked(SingleItem item)
     {
         if (isSwapping || isProcessing) return;
-        if (GamingController.Instance != null && !GamingController.Instance.IsGameActive) return;
+        if (GamingUI.Instance != null && !GamingUI.Instance.IsGameActive) return;
         
         if (selectedItem == null)
         {
@@ -587,7 +588,7 @@ public class ItemController : MonoBehaviour
     public void OnDragStarted(SingleItem item, PointerEventData eventData)
     {
         if (isSwapping || isProcessing || item == null) return;
-        if (GamingController.Instance != null && !GamingController.Instance.IsGameActive) return;
+        if (GamingUI.Instance != null && !GamingUI.Instance.IsGameActive) return;
         
         dragStartItem = item;
         dragStartPos = eventData.position;
