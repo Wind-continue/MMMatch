@@ -1,2 +1,5 @@
 # MMMatch
-A game of match 
+
+A candy-match3 offline game.
+
+FREE！
