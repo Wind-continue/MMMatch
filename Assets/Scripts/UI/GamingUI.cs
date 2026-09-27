@@ -14,18 +14,19 @@ namespace MMMatch.UI
         [Header("Game Settings")]
         public int totalSteps = 10;
 
+        private const int TotalLevelCount = 30;
+        private const float ResultShowDelay = 0.8f;
+        private const float ProcessingTimeout = 5f;
+
         private int currentSteps;
         private bool isGameOver = false;
         private bool isLevelComplete = false;
         private bool isGameStarted = false;
-        private bool pendingWin = false;
-        private int pendingWinLevel;
-        private int pendingWinScore;
-        private int pendingWinCoins;
+        private bool isShowingResult = false;
 
         public static GamingUI Instance { get; private set; }
 
-        public bool IsGameActive { get { return isGameStarted && !isGameOver && !isLevelComplete; } }
+        public bool IsGameActive { get { return isGameStarted && !isGameOver && !isLevelComplete && !isShowingResult; } }
 
         void Awake()
         {
@@ -43,22 +44,6 @@ namespace MMMatch.UI
                 Instance = null;
         }
 
-        void Update()
-        {
-            if (!isGameStarted) return;
-
-            if (pendingWin)
-            {
-                ItemController ic = GetComponentInChildren<ItemController>();
-                if (ic == null) ic = FindObjectOfType<ItemController>();
-                if (ic == null || !ic.IsProcessing)
-                {
-                    pendingWin = false;
-                    ShowWinUI(pendingWinLevel, pendingWinScore, pendingWinCoins);
-                }
-            }
-        }
-
         public override void OnOpen()
         {
             ResolveReferences();
@@ -71,7 +56,7 @@ namespace MMMatch.UI
             isGameStarted = false;
             isGameOver = false;
             isLevelComplete = false;
-            pendingWin = false;
+            isShowingResult = false;
         }
 
         private void ResolveReferences()
@@ -121,7 +106,7 @@ namespace MMMatch.UI
             isGameStarted = true;
             isGameOver = false;
             isLevelComplete = false;
-            pendingWin = false;
+            isShowingResult = false;
         }
 
         public void OnSuccessfulMatch()
@@ -139,20 +124,22 @@ namespace MMMatch.UI
 
         private void TriggerGameOver()
         {
-            if (isGameOver || isLevelComplete) return;
+            if (isGameOver || isLevelComplete || isShowingResult) return;
             isGameOver = true;
+            isShowingResult = true;
 
             int level = SaveManager.Instance.PlayerData.currentLevel;
             int score = SaveManager.Instance.GetLevelScore(level);
             SaveManager.Instance.SaveLevelProgress(level, score, false);
 
-            StartCoroutine(ShowGameOverUICoroutine(level));
+            StartCoroutine(ShowResultCoroutine(level, false, 0, 0));
         }
 
         public void OnAllTargetsCompleted()
         {
-            if (isGameOver || isLevelComplete) return;
+            if (isGameOver || isLevelComplete || isShowingResult) return;
             isLevelComplete = true;
+            isShowingResult = true;
 
             int level = SaveManager.Instance.PlayerData.currentLevel;
             int remainingSteps = currentSteps;
@@ -163,35 +150,45 @@ namespace MMMatch.UI
             SaveManager.Instance.UnlockNextLevel();
             SaveManager.Instance.AddCoins(coinsEarned);
 
-            pendingWin = true;
-            pendingWinLevel = level;
-            pendingWinScore = score;
-            pendingWinCoins = coinsEarned;
+            StartCoroutine(ShowResultCoroutine(level, true, score, coinsEarned));
         }
 
-        private void ShowWinUI(int level, int score, int coins)
+        private IEnumerator ShowResultCoroutine(int level, bool win, int score, int coins)
         {
-            if (UIManager.Instance != null)
+            yield return new WaitForSecondsRealtime(ResultShowDelay);
+
+            float elapsed = 0f;
+            while (elapsed < ProcessingTimeout)
             {
-                LevelWinUI winUI = UIManager.Instance.Open<LevelWinUI>();
-                if (winUI != null)
-                    winUI.Setup(level, score, coins);
-            }
-        }
+                ItemController ic = FindObjectOfType<ItemController>();
+                if (ic == null || !ic.IsProcessing)
+                    break;
 
-        private IEnumerator ShowGameOverUICoroutine(int level)
-        {
-            yield return new WaitForSecondsRealtime(0.5f);
-
-            ItemController ic = FindObjectOfType<ItemController>();
-            while (ic != null && ic.IsProcessing)
                 yield return null;
+                elapsed += Time.unscaledDeltaTime;
+            }
+
+            if (elapsed >= ProcessingTimeout)
+                Debug.LogWarning("GamingUI: Timed out waiting for ItemController.IsProcessing, showing result anyway.");
 
             if (UIManager.Instance != null)
             {
-                GameOverUI gameOverUI = UIManager.Instance.Open<GameOverUI>();
-                if (gameOverUI != null)
-                    gameOverUI.Setup(level);
+                GameResultUI resultUI = UIManager.Instance.Open<GameResultUI>();
+                if (resultUI != null)
+                {
+                    if (win)
+                        resultUI.SetupWin(level, score, coins, TotalLevelCount);
+                    else
+                        resultUI.SetupFail(level);
+                }
+                else
+                {
+                    Debug.LogError("GamingUI: Failed to open GameResultUI!");
+                }
+            }
+            else
+            {
+                Debug.LogError("GamingUI: UIManager.Instance is null!");
             }
         }
 

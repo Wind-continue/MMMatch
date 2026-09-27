@@ -178,41 +178,45 @@ public class ItemController : MonoBehaviour
             selectedItem = null;
         }
         
-        int row1 = item1.Row;
-        int col1 = item1.Col;
-        int row2 = item2.Row;
-        int col2 = item2.Col;
-        
-        ItemGrid[row1, col1] = item2;
-        ItemGrid[row2, col2] = item1;
-        
-        item1.SetItemIndex(row2, col2);
-        item2.SetItemIndex(row1, col1);
-        
-        yield return StartCoroutine(MoveItemsTogether(item1, item2, row2, col2, row1, col1));
-        
-        yield return new WaitForSecondsRealtime(0.1f);
-        
-        if (!CheckMatches())
+        try
         {
-            ItemGrid[row1, col1] = item1;
-            ItemGrid[row2, col2] = item2;
+            int row1 = item1.Row;
+            int col1 = item1.Col;
+            int row2 = item2.Row;
+            int col2 = item2.Col;
             
-            item1.SetItemIndex(row1, col1);
-            item2.SetItemIndex(row2, col2);
+            ItemGrid[row1, col1] = item2;
+            ItemGrid[row2, col2] = item1;
             
-            yield return StartCoroutine(MoveItemsTogether(item1, item2, row1, col1, row2, col2));
-        }
-        else
-        {
-            // 成功匹配，减少步数
-            if (gamingController != null)
+            item1.SetItemIndex(row2, col2);
+            item2.SetItemIndex(row1, col1);
+            
+            yield return StartCoroutine(MoveItemsTogether(item1, item2, row2, col2, row1, col1));
+            
+            yield return new WaitForSecondsRealtime(0.1f);
+            
+            if (!CheckMatches())
             {
-                gamingController.OnSuccessfulMatch();
+                ItemGrid[row1, col1] = item1;
+                ItemGrid[row2, col2] = item2;
+                
+                item1.SetItemIndex(row1, col1);
+                item2.SetItemIndex(row2, col2);
+                
+                yield return StartCoroutine(MoveItemsTogether(item1, item2, row1, col1, row2, col2));
+            }
+            else
+            {
+                if (gamingController != null)
+                {
+                    gamingController.OnSuccessfulMatch();
+                }
             }
         }
-        
-        isSwapping = false;
+        finally
+        {
+            isSwapping = false;
+        }
     }
 
     private IEnumerator MoveItemsTogether(SingleItem item1, SingleItem item2, int targetRow1, int targetCol1, int targetRow2, int targetCol2)
@@ -375,23 +379,28 @@ public class ItemController : MonoBehaviour
     {
         isProcessing = true;
         
-        yield return StartCoroutine(DestroyMatches(matches));
-        
-        yield return new WaitForSecondsRealtime(0.1f);
-        
-        yield return StartCoroutine(DropItems());
-        
-        yield return StartCoroutine(FillEmptySpaces());
-        
-        yield return new WaitForSecondsRealtime(0.1f);
-        
-        List<SingleItem> newMatches = FindAllMatches();
-        if (newMatches.Count > 0)
+        try
         {
-            yield return StartCoroutine(ProcessMatches(newMatches));
+            yield return StartCoroutine(DestroyMatches(matches));
+            
+            yield return new WaitForSecondsRealtime(0.1f);
+            
+            yield return StartCoroutine(DropItems());
+            
+            yield return StartCoroutine(FillEmptySpaces());
+            
+            yield return new WaitForSecondsRealtime(0.1f);
+            
+            List<SingleItem> newMatches = FindAllMatches();
+            if (newMatches.Count > 0)
+            {
+                yield return StartCoroutine(ProcessMatches(newMatches));
+            }
         }
-        
-        isProcessing = false;
+        finally
+        {
+            isProcessing = false;
+        }
     }
 
     IEnumerator DestroyMatches(List<SingleItem> matches)

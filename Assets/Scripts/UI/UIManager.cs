@@ -51,6 +51,10 @@ namespace MMMatch.UI
                     if (!templates.ContainsKey(key))
                         templates[key] = prefab;
                 }
+                else
+                {
+                    Debug.LogWarning("UIManager: Prefab '" + prefab.name + "' has no UIPanelBase component, skipping.");
+                }
             }
 
             UIPanelBase[] scenePanels = uiRoot.GetComponentsInChildren<UIPanelBase>(true);
@@ -66,17 +70,26 @@ namespace MMMatch.UI
         public T Open<T>() where T : UIPanelBase
         {
             string key = typeof(T).Name;
-            T panel;
+            T panel = null;
+            GameObject obj = null;
 
             if (templates.ContainsKey(key) && templates[key] != null)
             {
-                GameObject obj = Instantiate(templates[key], uiRoot);
+                obj = Instantiate(templates[key], uiRoot);
                 obj.name = key;
                 panel = obj.GetComponent<T>();
+
+                if (panel == null)
+                {
+                    Debug.LogWarning("UIManager: Prefab for '" + key + "' instantiated but GetComponent<" + key + "> returned null. Adding component dynamically.");
+                    panel = obj.AddComponent<T>();
+                }
             }
-            else
+
+            if (panel == null)
             {
-                GameObject obj = new GameObject(key);
+                Debug.LogWarning("UIManager: No template found for '" + key + "', creating empty panel.");
+                obj = new GameObject(key);
                 obj.transform.SetParent(uiRoot, false);
                 RectTransform rect = obj.AddComponent<RectTransform>();
                 rect.anchorMin = Vector2.zero;
